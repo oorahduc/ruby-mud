@@ -1,4 +1,7 @@
 require 'socket'
+require 'thread'
+
+# Threaded mud client with support for aliases via aliases.conf file
 
 class Connection
   def initialize
@@ -6,45 +9,56 @@ class Connection
     @hostname = 'realmsofdespair.com'
     @port = 4000
     @aliases = Hash[File.read('aliases.conf').split("\n").map{|i|i.split(':')}]
+    @connected = false
+    @input = ""
   end
 
   def connect
     begin
       @s = TCPSocket.open(@hostname, @port)
       puts "Connection established to #{@hostname} on port #{@port}"
+      @connected = true
     rescue
       puts "Connection failed."
+      @connected = false
     end
     output
   end
 
   def output
     sleep(0.5)
-    @response = @s.recvfrom(@buffersize)
-    puts @response
-    if @input == "quit"
-      @s.close
-    else
-      prompt
+    while @connected == true
+      @response = @s.recvfrom(@buffersize)
+      puts @response
+      if @input == "quit"
+        sleep(1)
+        @connected = false
+        @s.close
+        exit
+      end
     end
   end
 
   def prompt
-    begin
-      print "> "
-      @input = gets.chomp
-    rescue Interrupt => e
-      puts " - Quitting"
-      exit
-    rescue StandardError => e
-      raise
+    loop do
+      begin
+        @input = gets.chomp
+      rescue Interrupt => e
+        @connected = false
+        puts " - Quitting"
+        exit
+      rescue StandardError => e
+        @connected = false
+        raise
+      end
+      process_input(@input)
     end
-    process_input(@input)
-    output
   end
 
   def process_input(i)
     if @aliases.key?(i)
+      puts "\r" + ("\e[A\e[K"*3)
+      STDOUT.flush
       puts @aliases[i]
       @s.puts(@aliases[i])
     else
@@ -58,5 +72,9 @@ class Connection
 end
 
 mud = Connection.new
-mud.connect
 
+t1 = Thread.new { mud.connect }
+t2 = Thread.new { mud.prompt }
+
+t1.join
+t2.join
