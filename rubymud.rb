@@ -5,15 +5,19 @@ require 'thread'
 
 class Connection
   def initialize
-    @buffersize = 20000
+    # Server parameters
     @hostname = 'realmsofdespair.com'
     @port = 4000
+    # Setup aliases
     @aliases = Hash[File.read('aliases.conf').split("\n").map{|i|i.split(':')}]
+    # Initialize basic params
+    @buffersize = 20000
     @connected = false
     @input = ""
   end
 
   def connect
+    # Initialize connection
     begin
       @s = TCPSocket.open(@hostname, @port)
       puts "Connection established to #{@hostname} on port #{@port}"
@@ -26,6 +30,7 @@ class Connection
   end
 
   def output
+    # Output stream from the server
     sleep(0.5)
     while @connected == true
       @response = @s.recvfrom(@buffersize)
@@ -40,6 +45,7 @@ class Connection
   end
 
   def prompt
+    # User input
     loop do
       begin
         @input = gets.chomp
@@ -56,6 +62,7 @@ class Connection
   end
 
   def process_input(i)
+    # Filter user input for aliases
     if @aliases.key?(i)
       puts "\r" + ("\e[A\e[K"*3)
       STDOUT.flush
@@ -67,6 +74,7 @@ class Connection
   end
 
   def close
+    # Close connection
     @s.close
   end
 end
