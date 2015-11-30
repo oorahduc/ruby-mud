@@ -95,6 +95,10 @@ class Connection
     end
   end
 
+  def local_echo(echo)
+    puts echo
+  end
+
   def close
     # Close connection
     @s.close
