@@ -20,7 +20,7 @@ class Connection
     # Initialize connection
     begin
       @s = TCPSocket.open(@hostname, @port)
-      puts "Connection established to #{@hostname} on port #{@port}"
+      puts "Connection established to #{@hostname}:#{@port}"
       @connected = true
     rescue
       puts "Connection failed."
@@ -61,13 +61,35 @@ class Connection
     end
   end
 
-  def process_input(i)
+  # Deprecated - Unused. Holding onto the old code for now.
+  def deprecated_process_input(i)
     # Filter user input for aliases
     if @aliases.key?(i)
       puts "\r" + ("\e[A\e[K"*3)
       STDOUT.flush
       puts @aliases[i]
       @s.puts(@aliases[i])
+    else
+      @s.puts(@input)
+    end
+  end
+
+  # Now splits aliases with multiple commands delimited by ;
+  def process_input(i)
+    # Filter user input for aliases
+    if @aliases.key?(i)
+      if @aliases[i].include? ";"
+        @aliases[i].split(";").each do |a|
+          puts a
+          sleep(0.5)
+          @s.puts(a)
+        end
+      else
+        puts "\r" + ("\e[A\e[K"*3)
+        STDOUT.flush
+        puts @aliases[i]
+        @s.puts(@aliases[i])
+      end
     else
       @s.puts(@input)
     end
