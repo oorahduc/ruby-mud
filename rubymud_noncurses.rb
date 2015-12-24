@@ -1,28 +1,17 @@
 require 'socket'
 require 'thread'
 require 'curses'
-require 'readline'
 require './util.rb'
 
 # Threaded mud client with support for aliases via aliases.conf file
 
-Curses.init_screen
-Curses.curs_set(1)
+#Curses.init_screen()
 
 class Connection
   def initialize
-    # @win1 = Curses::Window.new(Curses.lines / 1 - 2, Curses.cols / 1 - 1, 0, 0)
-    # @win1.setpos(1, 2)
-    # @win1.refresh
-    @input_panel = Curses::Window.new(2, Curses.cols, Curses.lines - 2, 1)
-    # @input_panel.box("|", "-")
-    @input_panel.refresh
-    @input_panel.setpos(1, 1)
-
     # Server parameters
-    @hostname, @port = ARGV
-    # @hostname = 'realmsofdespair.com'
-    # @port = 4000
+    @hostname = 'realmsofdespair.com'
+    @port = 4000
     # Setup aliases
     @aliases = Hash[File.read('aliases.conf').split("\n").map{|i|i.split(':')}]
     # Initialize basic params
@@ -48,41 +37,29 @@ class Connection
     # Output stream from the server
     sleep(0.5)
     while @connected == true
-      # print "\n"
       @response = @s.recvfrom(@buffersize)
       puts @response
-      # promptbar
+      promptbar
       if @input == "quit"
         sleep(1)
         @connected = false
         @s.close
         exit
       end
-      @input_panel.setpos(1, 1)
-      @input_panel.refresh
-      @input_panel << @input
     end
   end
 
   def promptbar
     @rows, @cols = winsize
-    @bar = "#" * @input_panel.maxx
-    @input_panel << @bar.bg_blue.blue
+    @bar = "#" * @cols.to_i
+    puts @bar.bg_blue.blue
   end
 
   def prompt
     # User input
     loop do
-      # puts @input_panel
       begin
-        @input_panel << @input = Readline.readline("> ", true)
-        if @input == "quit"
-          exit
-        else
-          @input_panel.refresh
-          # p Readline::HISTORY.to_a
-          # print("-> ", buf, "\n")
-        end
+        @input = gets.chomp
       rescue Interrupt => e
         @connected = false
         puts " - Quitting"
@@ -94,7 +71,19 @@ class Connection
         raise
       end
       process_input(@input)
-      # @input_panel.setpos(1, 1)
+    end
+  end
+
+  # Deprecated - Unused. Holding onto the old code for now.
+  def deprecated_process_input(i)
+    # Filter user input for aliases
+    if @aliases.key?(i)
+      puts "\r" + ("\e[A\e[K"*3)
+      STDOUT.flush
+      puts @aliases[i]
+      @s.puts(@aliases[i])
+    else
+      @s.puts(@input)
     end
   end
 
@@ -114,11 +103,11 @@ class Connection
         @s.puts(@aliases[i])
       end
     else
-      # puts "\r" + ("\e[A\e[K"*3)
+      puts "\r" + ("\e[A\e[K"*3)
       # $STDOUT.flush
+      puts @input
       @s.puts(@input)
     end
-    @input_panel.setpos(1, 1)
   end
 
   def close
